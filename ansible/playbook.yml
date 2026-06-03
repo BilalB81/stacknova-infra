@@ -3,22 +3,38 @@
   hosts: recette
   gather_facts: false
 
-  vars:
-    deploy_timestamp: "{{ lookup('pipe', 'date \"+%d/%m/%Y a %H:%M:%S\"') }}"
-
   tasks:
 
-    - name: Creer la page HTML personnalisee
+    - name: Creer la page HTML avec date de deploiement
       ansible.builtin.raw: |
-        printf '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="UTF-8">\n<title>StackNova - recette</title>\n<style>\nbody { font-family: sans-serif; background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }\n.card { background: #1e293b; padding: 2rem 3rem; border-radius: 12px; border-left: 4px solid #3b82f6; text-align: center; }\nh1 { color: #3b82f6; font-size: 2rem; }\n.env { background: #f59e0b; color: #000; padding: 0.2rem 0.8rem; border-radius: 999px; font-weight: bold; }\n.meta { color: #94a3b8; font-size: 0.9rem; margin-top: 1rem; }\n</style>\n</head>\n<body>\n<div class="card">\n<h1>StackNova</h1>\n<span class="env">recette</span>\n<p>Environnement de recette - equipe QA</p>\n<p class="meta">Deploye le : DEPLOY_DATE</p>\n<p class="meta">Gere par Terraform + Ansible</p>\n</div>\n</body>\n</html>\n' > /usr/share/nginx/html/index.html
-      changed_when: true
-
-    - name: Injecter la date de deploiement
-      ansible.builtin.raw: "sed -i 's/DEPLOY_DATE/{{ deploy_timestamp }}/g' /usr/share/nginx/html/index.html"
+        DATE=$(date "+%d/%m/%Y a %H:%M:%S")
+        cat > /usr/share/nginx/html/index.html << HTMLEOF
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <title>StackNova - recette</title>
+          <style>
+            body { font-family: sans-serif; background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+            .card { background: #1e293b; padding: 2rem 3rem; border-radius: 12px; border-left: 4px solid #3b82f6; text-align: center; }
+            h1 { color: #3b82f6; font-size: 2rem; }
+            .env { background: #f59e0b; color: #000; padding: 0.2rem 0.8rem; border-radius: 999px; font-weight: bold; }
+            .meta { color: #94a3b8; font-size: 0.9rem; margin-top: 1rem; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>StackNova</h1>
+            <span class="env">recette</span>
+            <p>Environnement de recette - equipe QA</p>
+            <p class="meta">Deploye le : $DATE</p>
+            <p class="meta">Gere par Terraform + Ansible</p>
+          </div>
+        </body>
+        </html>
+        HTMLEOF
       changed_when: true
 
     - name: Verifier que Nginx est actif
-      ansible.builtin.raw: pgrep nginx
-      register: nginx_check
-      failed_when: nginx_check.rc != 0
+      ansible.builtin.raw: nginx -t
       changed_when: false
